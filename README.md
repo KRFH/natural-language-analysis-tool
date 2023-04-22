@@ -38,3 +38,7 @@ Run the Dash application:
 - Input a query in Japanese to filter the dataset (e.g., "男性で３０歳以上４０歳未満で生き残った人は？").
 
 - Click the "Submit" button to display the query results in a table and generate EDA plots for the filtered dataset.
+
+## Demo
+![demo](https://user-images.githubusercontent.com/75525727/233784213-f77836af-5502-4209-a250-0c6cb49b6fff.gif)
+
