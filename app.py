@@ -23,7 +23,7 @@ app = dash.Dash(__name__)
 app.layout = html.Div(
     [
         # Title
-        html.H1("Titanic Dataset Query Tool"),
+        html.H1("Dataset Query Tool"),
         # Upload section
         dcc.Upload(
             id="upload-data",
