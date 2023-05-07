@@ -2,10 +2,10 @@
 This repository is a dashboard application that uses OpenAI's GPT and Langchain to receive queries in Natural language and perform data operations on Pandas data frames. The application supports data upload, preprocessing, exploratory data analysis (EDA), and generation of training data for model learning.
 
 ## Features
-CSV file upload: Users can upload CSV files to the application. The uploaded data is displayed as information about the data frame, summary statistics, and the first 10 rows.
-Data preprocessing: Users can enter a preprocessing query in Natural language and apply the corresponding data operation to a Pandas data frame.
-Exploratory data analysis (EDA): Users can enter an EDA query in Natural language and apply the corresponding data operation to a Pandas data frame. EDA plots are also generated, displaying missing values, distributions of numerical data, distributions of categorical data, and correlations of numerical data.
-Generation of training data for model learning: Users can split the data frame into training and test sets and download them as CSV files.
+- CSV file upload: Users can upload CSV files to the application. The uploaded data is displayed as information about the data frame, summary statistics, and the first 10 rows.
+- Data preprocessing: Users can enter a preprocessing query in Natural language and apply the corresponding data operation to a Pandas data frame.
+- Exploratory data analysis (EDA): Users can enter an EDA query in Natural language and apply the corresponding data operation to a Pandas data frame. EDA plots are also generated, displaying missing values, distributions of numerical data, distributions of categorical data, and correlations of numerical data.
+- Generation of training data for model learning: Users can split the data frame into training and test sets and download them as CSV files.
 
 ## Usage
 Clone the repository and install the necessary packages.
