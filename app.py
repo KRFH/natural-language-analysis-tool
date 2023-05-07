@@ -3,28 +3,35 @@ import base64
 import io
 from io import StringIO
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import dash
 from dash import dcc, html, dash_table
 from dash import Input, Output, State
 from dash.exceptions import PreventUpdate
+from sklearn.model_selection import train_test_split
 
 from chat import chat_tool_with_pandas_df
+from utils import (
+    generate_categorical_distribution_plot,
+    generate_missing_value_plot,
+    generate_numerical_distribution_plot,
+    generate_correlation_plot,
+    df_to_csv_data,
+)
 
-# Open the API key file and set the environment variable
+
+# Set the API key environment variable
 with open("/Users/kai/Desktop/api/openai.txt", mode="r") as f:
     os.environ["OPENAI_API_KEY"] = f.read()
 
-# Define the layout for the Dash application
+# Initialize the Dash app
 app = dash.Dash(__name__)
 
-# Create the layout with upload, input, and display sections
+# Define the layout for the Dash application
 app.layout = html.Div(
     [
         # Title
-        html.H1("Dataset Query Tool"),
-        # Upload section
+        html.H1("Interactive Dataset Natural Language Query and Analysis Tool"),
+        # File upload section
         dcc.Upload(
             id="upload-data",
             children=html.Div(["Drag and Drop or ", html.A("Select a CSV File")]),
@@ -38,71 +45,62 @@ app.layout = html.Div(
                 "textAlign": "center",
                 "margin": "10px",
             },
-            # Allow only one file to be uploaded
             multiple=False,
         ),
+        # Data store and info section
         dcc.Store(id="stored-dataframe"),
+        dcc.Store(id="stored-dataframe-eda"),
         html.Div(id="dataframe-info"),
-        # Query input section
-        html.Label("クエリ入力"),
+        # Preprocessing selection section
+        html.H2("データ前処理"),
+        # Preprocessing query input section
+        html.Div(
+            [
+                html.Li("データ前処理クエリ入力"),
+                dcc.Input(
+                    id="query-input-preprocessing",
+                    placeholder="前処理クエリを入力してください（例：'Age'の欠損値を平均値で補完）",
+                    style={"width": "100%", "height": "50px"},
+                ),
+                html.Button("Submit", id="submit-button-preprocessing"),
+            ],
+            id="preprocessing-input-container",
+        ),
+        # Preprocessing query result section
+        dcc.Loading(html.Div(id="query-result-preprocessing")),
+        # EDA query input section
+        html.H2("EDA"),
+        html.Li("EDAクエリ入力"),
         html.Div(
             [
                 dcc.Input(
-                    id="query-input",
+                    id="query-input-eda",
                     placeholder="クエリを入力してください（例：男性で３０歳以上４０歳未満で生き残った人は？）",
                     style={"width": "100%", "height": "50px"},
                 ),
-                html.Button("Submit", id="submit-button"),
+                html.Button("Submit", id="submit-button-eda"),
             ]
         ),
-        # Query result section
-        html.Label("クエリ結果"),
-        dcc.Loading(html.Div(id="query-result")),
-        dcc.Store(id="query-result-dataframe"),
+        # EDA query result section
+        dcc.Loading(html.Div(id="query-result-eda")),
         # EDA plots section
-        html.Label("EDAプロット"),
         dcc.Loading(html.Div(id="eda-plots")),
+        html.H2("モデル学習用データ生成"),
+        html.Button("Split Dataset and Download", id="split-dataset"),
+        html.Div(id="train-test-csv-files"),
     ]
 )
 
 
-# Callback function to display query results and store the result dataframe
+# Callback to store the uploaded dataframe and display its information
 @app.callback(
-    Output("query-result", "children"),
-    Output("query-result-dataframe", "data"),
-    Input("submit-button", "n_clicks"),
-    [
-        State("query-input", "value"),
-        State("stored-dataframe", "data"),
-    ],
-)
-def update_output(n_clicks, query, df):
-    if n_clicks is None:
-        return "", None
-    if df is None:
-        return "csv ファイルをアップロードしてください", None
-    if query:
-        df = pd.DataFrame(df)
-        result_df = chat_tool_with_pandas_df(df, query).reset_index()
-        store_data = result_df.to_dict("records")
-        return [
-            dash_table.DataTable(
-                columns=[{"name": i, "id": i} for i in result_df.columns],
-                data=result_df.to_dict("records"),
-            ),
-        ], store_data
-
-    return "クエリが入力されていません。", None
-
-
-# Callback function to store the uploaded dataframe and display its information
-@app.callback(
-    Output("stored-dataframe", "data"),
+    Output("stored-dataframe", "data", allow_duplicate=True),
     Output("dataframe-info", "children"),
-    [Input("upload-data", "contents")],
-    [State("upload-data", "filename")],
+    Input("upload-data", "contents"),
+    State("upload-data", "filename"),
+    prevent_initial_call=True,
 )
-def update_output(contents, filename):
+def update_uploaded_dataframe(contents, filename):
     layout = []
     if contents:
         content_type, content_string = contents.split(",")
@@ -146,79 +144,169 @@ def update_output(contents, filename):
     return None, layout
 
 
-# Callback function to generate plots from DataFrame
+# Callback to update preprocessing query results and store the result dataframe
+@app.callback(
+    Output("query-result-preprocessing", "children"),
+    Output("stored-dataframe", "data", allow_duplicate=True),
+    Input("submit-button-preprocessing", "n_clicks"),
+    State("query-input-preprocessing", "value"),
+    State("stored-dataframe", "data"),
+    prevent_initial_call=True,
+)
+def update_preprocessing_results(n_clicks, query, df):
+    if n_clicks is None or df is None:
+        return "", None
+
+    if query:
+        df = pd.DataFrame(df)
+        query += "そのpythoncodeは？"
+        result_df= chat_tool_with_pandas_df(df, query)
+        store_data = result_df.to_dict("records")
+        info_buffer = StringIO()
+        result_df.info(buf=info_buffer)
+        info_str = info_buffer.getvalue()
+        layout = [
+            html.Li("前処理クエリ結果"),
+            html.Label("データフレームの情報:"),
+            html.Pre(info_str),
+            html.Label("データフレームの要約統計:"),
+            dash_table.DataTable(
+                id="describe-table",
+                columns=[
+                    {"name": i, "id": i}
+                    for i in result_df.reset_index().describe().columns
+                ],
+                data=result_df.describe().reset_index().to_dict("records"),
+            ),
+            html.Label("データフレームの最初の10行:"),
+            dash_table.DataTable(
+                id="head-table",
+                columns=[{"name": i, "id": i} for i in result_df.head(10).columns],
+                data=result_df.head(10).to_dict("records"),
+            ),
+        ]
+        return layout, store_data
+
+    return "クエリが入力されていません。", None
+
+
+# Callback to update EDA query results and store the result dataframe
+@app.callback(
+    Output("query-result-eda", "children"),
+    Output("stored-dataframe-eda", "data", allow_duplicate=True),
+    Input("submit-button-eda", "n_clicks"),
+    State("query-input-eda", "value"),
+    State("stored-dataframe", "data"),
+    prevent_initial_call=True,
+)
+def update_eda_query_results(n_clicks, query, df):
+    if n_clicks is None or df is None:
+        return "", None
+
+    if query:
+        df = pd.DataFrame(df)
+        query+="そのpandas codeは？"
+        result_df = chat_tool_with_pandas_df(df, query)
+        store_data = result_df.to_dict("records")
+        return [
+            html.Li("EDAクエリ結果"),
+            dash_table.DataTable(
+                columns=[{"name": i, "id": i} for i in result_df.columns],
+                data=result_df.to_dict("records"),
+            ),
+        ], store_data
+
+    return "クエリが入力されていません。", None
+
+
+# Callback to generate EDA plots from DataFrame
 @app.callback(
     Output("eda-plots", "children"),
-    Input("query-result-dataframe", "data"),
+    Input("stored-dataframe", "data"),
+    Input("stored-dataframe-eda", "data"),
 )
-def generate_eda_plots(data):
-    if not data:
+def generate_eda_plots(data_default, data):
+    if not data_default:
         raise PreventUpdate
+    if not data:
+        data=data_default
 
     df = pd.DataFrame(data)
 
-    # Check for missing values
-    missing_values = df.isnull().sum()
-    missing_values_percent = (missing_values / len(df)) * 100
-    missing_df = pd.DataFrame(
-        {"Missing Values": missing_values, "Percentage": missing_values_percent}
-    ).reset_index()
-
-    # Separate columns into numerical and categorical
-    numerical_columns = df.select_dtypes(include=["int64", "float64"]).columns
-    categorical_columns = df.select_dtypes(include=["object", "bool"]).columns
-
-    # Create a subplot for numerical distributions
-    fig_num_dist = make_subplots(
-        cols=len(numerical_columns), rows=1, subplot_titles=numerical_columns
-    )
-
-    # Plot histograms for numerical columns
-    for i, col in enumerate(numerical_columns, start=1):
-        fig_num_dist.add_trace(
-            go.Histogram(x=df[col], nbinsx=20, histnorm="probability"), col=i, row=1
-        )
-
-    fig_num_dist.update_layout(title_text="Numerical Distributions")
-
-    # Create a subplot for categorical distributions
-    fig_cat_dist = make_subplots(
-        cols=len(categorical_columns), rows=1, subplot_titles=categorical_columns
-    )
-
-    # Plot bar charts for categorical columns
-    for i, col in enumerate(categorical_columns, start=1):
-        fig_cat_dist.add_trace(
-            go.Histogram(x=df[col], histnorm="probability"), col=i, row=1
-        )
-
-    fig_cat_dist.update_layout(title_text="Categorical Distributions")
-
-    # Plot heatmap for numerical column correlations
-    corr_matrix = df[numerical_columns].corr()
-    fig_corr = go.Figure(
-        go.Heatmap(
-            z=corr_matrix,
-            x=numerical_columns,
-            y=numerical_columns,
-            colorscale="RdBu",
-        )
-    )
-    fig_corr.update_layout(title_text="Numerical Column Correlations")
+    # Generate missing value plot
+    missing_plot = generate_missing_value_plot(df)
+    # Generate numerical distribution plot
+    numerical_plot = generate_numerical_distribution_plot(df)
+    # Generate categorical distribution plot
+    categorical_plot = generate_categorical_distribution_plot(df)
+    # Generate correlation plot
+    correlation_plot = generate_correlation_plot(df)
 
     layout = [
+        html.Li("EDAプロット"),
         html.Label("欠損値の確認"),
-        dash_table.DataTable(
-            columns=[{"name": i, "id": i} for i in missing_df.columns],
-            data=missing_df.to_dict("records"),
-        ),
+        missing_plot,
         html.Label("数値データの分布"),
-        dcc.Graph(figure=fig_num_dist),
+        dcc.Graph(figure=numerical_plot),
         html.Label("カテゴリデータの分布"),
-        dcc.Graph(figure=fig_cat_dist),
+        dcc.Graph(figure=categorical_plot),
         html.Label("数値データの相関"),
-        dcc.Graph(figure=fig_corr),
+        dcc.Graph(figure=correlation_plot),
     ]
+
+    return layout
+
+
+# Create a callback function to split the dataset into train and test sets
+@app.callback(
+    Output("train-test-csv-files", "children"),
+    Input("split-dataset", "n_clicks"),
+    State("stored-dataframe", "data"),
+    prevent_initial_call=True,
+)
+def split_dataset_into_train_and_test(n_clicks, data):
+    if not data:
+        return [html.P("データがありません")]
+
+    if n_clicks:
+        df = pd.DataFrame(data)
+        train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
+
+        train_csv_data = df_to_csv_data(train_df)
+        test_csv_data = df_to_csv_data(test_df)
+
+        train_href = f"data:text/csv;charset=utf-8;base64,{train_csv_data}"
+        test_href = f"data:text/csv;charset=utf-8;base64,{test_csv_data}"
+
+        layout = [
+            html.Div(
+                [
+                    html.P("Download Train Set:"),
+                    html.A(
+                        "Download train.csv",
+                        id="download-train-link",
+                        download="train.csv",
+                        href=train_href,
+                        target="_blank",
+                    ),
+                ]
+            ),
+            html.Div(
+                [
+                    html.P("Download Test Set:"),
+                    html.A(
+                        "Download test.csv",
+                        id="download-test-link",
+                        download="test.csv",
+                        href=test_href,
+                        target="_blank",
+                    ),
+                ]
+            ),
+        ]
+
+    else:
+        layout = []
 
     return layout
 
