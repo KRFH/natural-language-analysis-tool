@@ -108,9 +108,7 @@ def update_uploaded_dataframe(contents, filename):
         try:
             if "csv" in filename:
                 # Assume that the user uploaded a CSV file
-                uploaded_df = pd.read_csv(
-                    io.StringIO(decoded.decode("utf-8")), index_col=0
-                )
+                uploaded_df = pd.read_csv(io.StringIO(decoded.decode("utf-8")), index_col=0)
                 info_buffer = StringIO()
                 uploaded_df.info(buf=info_buffer)
                 info_str = info_buffer.getvalue()
@@ -120,18 +118,13 @@ def update_uploaded_dataframe(contents, filename):
                     html.Label("データフレームの要約統計:"),
                     dash_table.DataTable(
                         id="describe-table",
-                        columns=[
-                            {"name": i, "id": i}
-                            for i in uploaded_df.reset_index().describe().columns
-                        ],
+                        columns=[{"name": i, "id": i} for i in uploaded_df.reset_index().describe().columns],
                         data=uploaded_df.describe().reset_index().to_dict("records"),
                     ),
                     html.Label("データフレームの最初の10行:"),
                     dash_table.DataTable(
                         id="head-table",
-                        columns=[
-                            {"name": i, "id": i} for i in uploaded_df.head(10).columns
-                        ],
+                        columns=[{"name": i, "id": i} for i in uploaded_df.head(10).columns],
                         data=uploaded_df.head(10).to_dict("records"),
                     ),
                 ]
@@ -160,7 +153,7 @@ def update_preprocessing_results(n_clicks, query, df):
     if query:
         df = pd.DataFrame(df)
         query += "そのpythoncodeは？"
-        result_df= chat_tool_with_pandas_df(df, query)
+        result_df = chat_tool_with_pandas_df(df, query)
         store_data = result_df.to_dict("records")
         info_buffer = StringIO()
         result_df.info(buf=info_buffer)
@@ -172,10 +165,7 @@ def update_preprocessing_results(n_clicks, query, df):
             html.Label("データフレームの要約統計:"),
             dash_table.DataTable(
                 id="describe-table",
-                columns=[
-                    {"name": i, "id": i}
-                    for i in result_df.reset_index().describe().columns
-                ],
+                columns=[{"name": i, "id": i} for i in result_df.reset_index().describe().columns],
                 data=result_df.describe().reset_index().to_dict("records"),
             ),
             html.Label("データフレームの最初の10行:"),
@@ -205,7 +195,7 @@ def update_eda_query_results(n_clicks, query, df):
 
     if query:
         df = pd.DataFrame(df)
-        query+="そのpandas codeは？"
+        query += "そのdataframeを表示するpandas codeは？"
         result_df = chat_tool_with_pandas_df(df, query)
         store_data = result_df.to_dict("records")
         return [
@@ -229,7 +219,7 @@ def generate_eda_plots(data_default, data):
     if not data_default:
         raise PreventUpdate
     if not data:
-        data=data_default
+        data = data_default
 
     df = pd.DataFrame(data)
 
