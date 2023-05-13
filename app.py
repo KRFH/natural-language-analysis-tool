@@ -51,40 +51,53 @@ app.layout = html.Div(
         dcc.Store(id="stored-dataframe"),
         dcc.Store(id="stored-dataframe-eda"),
         html.Div(id="dataframe-info"),
-        # Preprocessing selection section
-        html.H2("データ前処理"),
-        # Preprocessing query input section
-        html.Div(
-            [
-                html.Li("データ前処理クエリ入力"),
-                dcc.Input(
-                    id="query-input-preprocessing",
-                    placeholder="前処理クエリを入力してください（例：'Age'の欠損値を平均値で補完）",
-                    style={"width": "100%", "height": "50px"},
+        # Tabs for Preprocessing and EDA sections
+        dcc.Tabs(
+            id="tabs",
+            children=[
+                dcc.Tab(
+                    label="データ前処理",
+                    id="preprocessing-tab",
+                    children=[
+                        # Preprocessing query input section
+                        html.Div(
+                            [
+                                dcc.Input(
+                                    id="query-input-preprocessing",
+                                    placeholder="前処理クエリを入力してください（例：'Age'の欠損値を平均値で補完）",
+                                    style={"width": "100%", "height": "50px"},
+                                ),
+                                html.Button("Submit", id="submit-button-preprocessing"),
+                            ],
+                            id="preprocessing-input-container",
+                        ),
+                        # Preprocessing query result section
+                        dcc.Loading(html.Div(id="query-result-preprocessing")),
+                    ],
                 ),
-                html.Button("Submit", id="submit-button-preprocessing"),
+                dcc.Tab(
+                    label="EDA",
+                    id="eda-tab",
+                    children=[
+                        # EDA query input section
+                        html.Div(
+                            [
+                                dcc.Input(
+                                    id="query-input-eda",
+                                    placeholder="クエリを入力してください（例：男性で３０歳以上４０歳未満で生き残った人は？）",
+                                    style={"width": "100%", "height": "50px"},
+                                ),
+                                html.Button("Submit", id="submit-button-eda"),
+                            ]
+                        ),
+                        # EDA query result section
+                        dcc.Loading(html.Div(id="query-result-eda")),
+                        # EDA plots section
+                        dcc.Loading(html.Div(id="eda-plots")),
+                    ],
+                ),
             ],
-            id="preprocessing-input-container",
         ),
-        # Preprocessing query result section
-        dcc.Loading(html.Div(id="query-result-preprocessing")),
-        # EDA query input section
-        html.H2("EDA"),
-        html.Li("EDAクエリ入力"),
-        html.Div(
-            [
-                dcc.Input(
-                    id="query-input-eda",
-                    placeholder="クエリを入力してください（例：男性で３０歳以上４０歳未満で生き残った人は？）",
-                    style={"width": "100%", "height": "50px"},
-                ),
-                html.Button("Submit", id="submit-button-eda"),
-            ]
-        ),
-        # EDA query result section
-        dcc.Loading(html.Div(id="query-result-eda")),
-        # EDA plots section
-        dcc.Loading(html.Div(id="eda-plots")),
         html.H2("モデル学習用データ生成"),
         html.Button("Split Dataset and Download", id="split-dataset"),
         html.Div(id="train-test-csv-files"),
