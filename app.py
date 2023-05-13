@@ -9,7 +9,7 @@ from dash import Input, Output, State
 from dash.exceptions import PreventUpdate
 from sklearn.model_selection import train_test_split
 
-from chat import chat_tool_with_pandas_df
+from preprocessing import chat_tool_with_pandas_df
 from utils import (
     generate_categorical_distribution_plot,
     generate_missing_value_plot,
@@ -17,6 +17,10 @@ from utils import (
     generate_correlation_plot,
     df_to_csv_data,
 )
+
+INPUT_DIR = os.getcwd() + "/data/input_data"
+OUTPUT_DIR = os.getcwd() + "/data/output_data"
+TARGET_COLUMN_NAME = "survived"
 
 
 # Set the API key environment variable
@@ -99,7 +103,7 @@ app.layout = html.Div(
             ],
         ),
         html.H2("モデル学習用データ生成"),
-        html.Button("Split Dataset and Download", id="split-dataset"),
+        html.Button("Create Dataset and Download", id="split-dataset"),
         html.Div(id="train-test-csv-files"),
     ]
 )
@@ -273,35 +277,31 @@ def split_dataset_into_train_and_test(n_clicks, data):
 
     if n_clicks:
         df = pd.DataFrame(data)
-        train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
+        x = df.drop(TARGET_COLUMN_NAME, axis=1)
+        y = df[TARGET_COLUMN_NAME]
+        print(f"全データ数:{len(x)}")
 
-        train_csv_data = df_to_csv_data(train_df)
-        test_csv_data = df_to_csv_data(test_df)
+        train, test, train_target, test_target = train_test_split(x, y, test_size=0.2, random_state=3655)
 
-        train_href = f"data:text/csv;charset=utf-8;base64,{train_csv_data}"
-        test_href = f"data:text/csv;charset=utf-8;base64,{test_csv_data}"
+        train["target"] = train_target
+        train.to_csv(f"{INPUT_DIR}/train.csv")
+        test.to_csv(f"{INPUT_DIR}/test.csv")
+        train_target.to_csv(f"{INPUT_DIR}/train_target.csv")
+        test_target.to_csv(f"{INPUT_DIR}/test_target.csv")
+
+        _csv_data = df_to_csv_data(df)
+
+        _href = f"data:text/csv;charset=utf-8;base64,{_csv_data}"
 
         layout = [
             html.Div(
                 [
-                    html.P("Download Train Set:"),
+                    html.P("Download DataSet:"),
                     html.A(
-                        "Download train.csv",
-                        id="download-train-link",
-                        download="train.csv",
-                        href=train_href,
-                        target="_blank",
-                    ),
-                ]
-            ),
-            html.Div(
-                [
-                    html.P("Download Test Set:"),
-                    html.A(
-                        "Download test.csv",
-                        id="download-test-link",
-                        download="test.csv",
-                        href=test_href,
+                        "Download_dataset.csv",
+                        id="download-link",
+                        download="dataset.csv",
+                        href=_href,
                         target="_blank",
                     ),
                 ]
