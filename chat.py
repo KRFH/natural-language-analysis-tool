@@ -26,13 +26,15 @@ def get_agent(df):
 
 def chat_tool_with_pandas_df(df, query):
     translated_query = translate_to_english(query)
-    translated_query += "It applies operations directly to the original data without creating a new copy."
-    translated_query += "The answer have to be just python code"
+    translated_query += "The operation must be applied directly to the original dataframe."
+    translated_query += "The answer must be just python code"
     agent = get_agent(df)
     result = agent.run(translated_query)
+    print(query)
+    print(translated_query)
     print(result)
     if "inplace" in result:
-        exec(result)
+        pass
     else:
         df = eval(result)
 
