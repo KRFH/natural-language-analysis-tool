@@ -1,9 +1,9 @@
 import pickle
 import pandas as pd
 import lightgbm as lgbm
-from app import OUTPUT_DIR
+from const import OUTPUT_DIR
 from langchain.tools import BaseTool
-from excute import make_forecast_train_data, make_forecast_test_data
+from make_data import make_forecast_train_data, make_forecast_test_data
 
 
 class LgbmtrainTool(BaseTool):
@@ -16,8 +16,10 @@ class LgbmtrainTool(BaseTool):
         lgb_train, lgb_eval, num_class = make_forecast_train_data(query)
         # number of classes of the objective variable
         if num_class == 2:
+            print("Binary Classification")
             params = {"task": "train", "boosting_type": "gbdt", "objective": "binary", "metric": "auc"}
         elif num_class <= 50:
+            print("Multi Classification")
             params = {
                 "task": "train",
                 "boosting_type": "gbdt",
@@ -26,6 +28,7 @@ class LgbmtrainTool(BaseTool):
                 "num_class": num_class,
             }
         else:
+            print("Regression")
             params = {"task": "train", "boosting_type": "gbdt", "objective": "regression", "metric": "rmse"}
 
         lgbm_model = lgbm.train(
@@ -35,10 +38,7 @@ class LgbmtrainTool(BaseTool):
             callbacks=[
                 lgbm.early_stopping(stopping_rounds=10, verbose=True),  # early_stopping用コールバック関数
                 lgbm.log_evaluation(1),
-            ]  # コマンドライン出力用コールバック関数
-            # verbose_eval=10,
-            # num_boost_round=1000,
-            # early_stopping_rounds=10,
+            ],  # コマンドライン出力用コールバック関数
         )
 
         file = f"{OUTPUT_DIR}/trained_model.pkl"

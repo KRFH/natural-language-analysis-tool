@@ -35,6 +35,8 @@ def chat_tool_with_pandas_df(df, query):
     print(result)
     if "inplace" in result:
         pass
+    elif " = " in result:
+        exec(result)
     else:
         df = eval(result)
 
