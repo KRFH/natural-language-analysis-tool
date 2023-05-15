@@ -8,8 +8,8 @@ from dash import dcc, html, dash_table
 from dash import Input, Output, State
 from dash.exceptions import PreventUpdate
 from sklearn.model_selection import train_test_split
-
-from chat import chat_tool_with_pandas_df
+from const import API_PATH, INPUT_DIR
+from preprocessing import chat_tool_with_pandas_df
 from utils import (
     generate_categorical_distribution_plot,
     generate_missing_value_plot,
@@ -17,10 +17,11 @@ from utils import (
     generate_correlation_plot,
     df_to_csv_data,
 )
+from excute import run_mltools
 
 
 # Set the API key environment variable
-with open("/Users/kai/Desktop/api/openai.txt", mode="r") as f:
+with open(API_PATH, mode="r") as f:
     os.environ["OPENAI_API_KEY"] = f.read()
 
 # Initialize the Dash app
@@ -32,6 +33,7 @@ app.layout = html.Div(
         # Title
         html.H1("Interactive Dataset Natural Language Query and Analysis Tool"),
         # File upload section
+        html.H2("Upload csv file"),
         dcc.Upload(
             id="upload-data",
             children=html.Div(["Drag and Drop or ", html.A("Select a CSV File")]),
@@ -51,45 +53,91 @@ app.layout = html.Div(
         dcc.Store(id="stored-dataframe"),
         dcc.Store(id="stored-dataframe-eda"),
         html.Div(id="dataframe-info"),
-        # Preprocessing selection section
-        html.H2("データ前処理"),
-        # Preprocessing query input section
-        html.Div(
-            [
-                html.Li("データ前処理クエリ入力"),
-                dcc.Input(
-                    id="query-input-preprocessing",
-                    placeholder="前処理クエリを入力してください（例：'Age'の欠損値を平均値で補完）",
-                    style={"width": "100%", "height": "50px"},
+        # set target column
+        html.H2("Set target column"),
+        dcc.RadioItems(id="target_column"),
+        # Tabs for Preprocessing and EDA sections
+        html.H2("Data understanding and preparation"),
+        dcc.Tabs(
+            id="tabs",
+            children=[
+                dcc.Tab(
+                    label="データ前処理",
+                    id="preprocessing-tab",
+                    children=[
+                        # Preprocessing query input section
+                        html.Div(
+                            [
+                                dcc.Input(
+                                    id="query-input-preprocessing",
+                                    placeholder="クエリを入力してください（例：'age'の欠損値を平均値で補完）",
+                                    style={"width": "100%", "height": "50px"},
+                                ),
+                                html.Button("Submit", id="submit-button-preprocessing"),
+                            ],
+                            id="preprocessing-input-container",
+                        ),
+                        # Preprocessing query result section
+                        dcc.Loading(html.Div(id="query-result-preprocessing")),
+                    ],
                 ),
-                html.Button("Submit", id="submit-button-preprocessing"),
+                dcc.Tab(
+                    label="EDA",
+                    id="eda-tab",
+                    children=[
+                        # EDA query input section
+                        html.Div(
+                            [
+                                dcc.Input(
+                                    id="query-input-eda",
+                                    placeholder="クエリを入力してください（例：男性で３０歳以上４０歳未満で生き残った人は？）",
+                                    style={"width": "100%", "height": "50px"},
+                                ),
+                                html.Button("Submit", id="submit-button-eda"),
+                            ]
+                        ),
+                        # EDA query result section
+                        dcc.Loading(html.Div(id="query-result-eda")),
+                        # EDA plots section
+                        dcc.Loading(html.Div(id="eda-plots")),
+                    ],
+                ),
             ],
-            id="preprocessing-input-container",
         ),
-        # Preprocessing query result section
-        dcc.Loading(html.Div(id="query-result-preprocessing")),
-        # EDA query input section
-        html.H2("EDA"),
-        html.Li("EDAクエリ入力"),
+        html.H2("Create Dataset"),
+        html.Button("Create Dataset and Download", id="split-dataset"),
+        html.Div(id="train-test-csv-files"),
+        html.H2("Modeling and Evaluation"),
         html.Div(
             [
                 dcc.Input(
-                    id="query-input-eda",
-                    placeholder="クエリを入力してください（例：男性で３０歳以上４０歳未満で生き残った人は？）",
+                    id="query-input-modeling",
+                    placeholder="クエリを入力してください（例：train.csvを使ってLightGBMの学習を行なったあとtest.csvのデータを推論してください）",
                     style={"width": "100%", "height": "50px"},
                 ),
-                html.Button("Submit", id="submit-button-eda"),
-            ]
+                html.Button("Submit", id="submit-button-modeling"),
+            ],
+            id="modeling-input-container",
         ),
-        # EDA query result section
-        dcc.Loading(html.Div(id="query-result-eda")),
-        # EDA plots section
-        dcc.Loading(html.Div(id="eda-plots")),
-        html.H2("モデル学習用データ生成"),
-        html.Button("Split Dataset and Download", id="split-dataset"),
-        html.Div(id="train-test-csv-files"),
+        dcc.Loading(html.Div(id="query-result-modeling")),
     ]
 )
+
+
+@app.callback(
+    Output("target_column", "options"),
+    Input("stored-dataframe", "data"),
+    prevent_initial_call=True,
+)
+def update_radioitem_target_col(data):
+    if data is None:
+        raise PreventUpdate
+
+    cols = pd.DataFrame(data).columns.tolist()
+
+    # layout = [dcc.RadioItems(id="target_column", label=cols)]
+
+    return cols
 
 
 # Callback to store the uploaded dataframe and display its information
@@ -237,11 +285,11 @@ def generate_eda_plots(data_default, data):
         html.Label("欠損値の確認"),
         missing_plot,
         html.Label("数値データの分布"),
-        dcc.Graph(figure=numerical_plot),
+        numerical_plot,
         html.Label("カテゴリデータの分布"),
-        dcc.Graph(figure=categorical_plot),
+        categorical_plot,
         html.Label("数値データの相関"),
-        dcc.Graph(figure=correlation_plot),
+        correlation_plot,
     ]
 
     return layout
@@ -252,43 +300,40 @@ def generate_eda_plots(data_default, data):
     Output("train-test-csv-files", "children"),
     Input("split-dataset", "n_clicks"),
     State("stored-dataframe", "data"),
+    State("target_column", "value"),
     prevent_initial_call=True,
 )
-def split_dataset_into_train_and_test(n_clicks, data):
+def split_dataset_into_train_and_test(n_clicks, data, target_column):
     if not data:
-        return [html.P("データがありません")]
+        return [html.P("データがありません")], None
 
     if n_clicks:
         df = pd.DataFrame(data)
-        train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
+        x = df.drop(target_column, axis=1)
+        y = df[target_column]
+        print(f"全データ数:{len(x)}")
 
-        train_csv_data = df_to_csv_data(train_df)
-        test_csv_data = df_to_csv_data(test_df)
+        train, test, train_target, test_target = train_test_split(x, y, test_size=0.2, random_state=3655)
 
-        train_href = f"data:text/csv;charset=utf-8;base64,{train_csv_data}"
-        test_href = f"data:text/csv;charset=utf-8;base64,{test_csv_data}"
+        train["target"] = train_target
+        train.to_csv(f"{INPUT_DIR}/train.csv")
+        test.to_csv(f"{INPUT_DIR}/test.csv")
+        train_target.to_csv(f"{INPUT_DIR}/train_target.csv")
+        test_target.to_csv(f"{INPUT_DIR}/test_target.csv")
+
+        _csv_data = df_to_csv_data(df)
+
+        _href = f"data:text/csv;charset=utf-8;base64,{_csv_data}"
 
         layout = [
             html.Div(
                 [
-                    html.P("Download Train Set:"),
+                    html.P("Download DataSet:"),
                     html.A(
-                        "Download train.csv",
-                        id="download-train-link",
-                        download="train.csv",
-                        href=train_href,
-                        target="_blank",
-                    ),
-                ]
-            ),
-            html.Div(
-                [
-                    html.P("Download Test Set:"),
-                    html.A(
-                        "Download test.csv",
-                        id="download-test-link",
-                        download="test.csv",
-                        href=test_href,
+                        "Download_dataset.csv",
+                        id="download-link",
+                        download="dataset.csv",
+                        href=_href,
                         target="_blank",
                     ),
                 ]
@@ -299,6 +344,79 @@ def split_dataset_into_train_and_test(n_clicks, data):
         layout = []
 
     return layout
+
+
+# Callback to update modeling query results and output the modeling result
+@app.callback(
+    Output("query-result-modeling", "children"),
+    Input("submit-button-modeling", "n_clicks"),
+    State("query-input-modeling", "value"),
+    State("stored-dataframe", "data"),
+    State("target_column", "value"),
+    prevent_initial_call=True,
+)
+def update_modeling_results(n_clicks, query, data, target_column):
+    if n_clicks is None or data is None:
+        return "", None
+
+    if query:
+        df = pd.DataFrame(data)
+        num_class = len(df[target_column].unique())
+        results = run_mltools(query, num_class)
+
+        import plotly.graph_objects as go
+        import plotly.figure_factory as ff
+
+        if num_class == 2:
+            confusion_matrix_fig = ff.create_annotated_heatmap(
+                results["confusion_matrix_data"],
+                colorscale="Blues",
+                x=["Predicted Negative", "Predicted Positive"],
+                y=["Actual Negative", "Actual Positive"],
+            )
+
+            layout = [
+                html.Div(
+                    [
+                        html.H2("Classification Results"),
+                        html.Table(
+                            [html.Tr([html.Td(key), html.Td(value)]) for key, value in results["metrics"].items()]
+                        ),
+                        dcc.Graph(id="confusion-matrix", figure=confusion_matrix_fig),
+                    ]
+                ),
+            ]
+        elif num_class <= 50:
+            pass
+        else:
+            actual_vs_predicted_fig = go.Figure()
+            actual_vs_predicted_fig.add_trace(
+                go.Scatter(
+                    x=results["actual_vs_predicted_data"]["actual"],
+                    y=results["actual_vs_predicted_data"]["predicted"],
+                    mode="markers",
+                )
+            )
+            actual_vs_predicted_fig.update_layout(xaxis_title="Actual", yaxis_title="Predicted")
+
+            residuals_fig = go.Figure()
+            residuals_fig.add_trace(go.Histogram(x=results["residuals_data"]["residuals"]))
+            residuals_fig.update_layout(xaxis_title="Residual", yaxis_title="Frequency")
+            layout = [
+                html.Div(
+                    [
+                        html.H2("Regression Results"),
+                        html.Table(
+                            [html.Tr([html.Td(key), html.Td(value)]) for key, value in results["metrics"].items()]
+                        ),
+                        dcc.Graph(id="actual-vs-predicted", figure=actual_vs_predicted_fig),
+                        dcc.Graph(id="residuals-plot", figure=residuals_fig),
+                    ],
+                ),
+            ]
+        return layout
+
+    return "クエリが入力されていません。", None
 
 
 # Run the Dash app
