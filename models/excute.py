@@ -6,7 +6,7 @@ from langchain.llms import OpenAI
 from langchain.agents import initialize_agent
 
 # langchaintools
-from langchaintools import mltools
+from models.langchaintools.mltools import LgbmtrainTool, LgbminferenceTool
 
 import os
 from const import OUTPUT_DIR, INPUT_DIR, API_PATH
@@ -28,7 +28,7 @@ with open(API_PATH, mode="r") as f:
 
 def run_mltools(query: str, num_class: int):
     # Toolの設定
-    tools = [mltools.LgbmtrainTool(), mltools.LgbminferenceTool()]
+    tools = [LgbmtrainTool(), LgbminferenceTool()]
     # 通常のLangChainの設定
     llm = OpenAI(temperature=0)
     agent = initialize_agent(tools, llm, agent="zero-shot-react-description", verbose=True)
