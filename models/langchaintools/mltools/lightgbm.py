@@ -3,7 +3,7 @@ import pandas as pd
 import lightgbm as lgbm
 from const import OUTPUT_DIR
 from langchain.tools import BaseTool
-from make_data import make_forecast_train_data, make_forecast_test_data
+from models.make_data import make_forecast_train_data, make_forecast_test_data
 
 
 class LgbmtrainTool(BaseTool):
