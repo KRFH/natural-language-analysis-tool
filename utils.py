@@ -153,3 +153,11 @@ def save_input_data(x, y):
         "test columns": test.columns,
     }
     return info
+
+
+def text_processing(text: str):
+    text = text.strip()
+    text = text.replace('"', "")
+    text = text.replace("'", "")
+
+    return text

@@ -1,9 +1,11 @@
-from dash import html, dcc
+from dash import html, dcc, dash_table
+from io import StringIO
+import pandas as pd
+from const import INPUT_DIR
 
 
 def file_upload_and_stored():
     return [
-        html.H2("Upload csv file"),
         dcc.Upload(
             id="upload-data",
             children=html.Div(["Drag and Drop or ", html.A("Select a CSV File")]),
@@ -93,4 +95,37 @@ def modeling_evaluaion():
             id="modeling-input-container",
         ),
         dcc.Loading(html.Div(id="query-result-modeling")),
+    ]
+
+
+def preprocessed_result_layouts(results):
+    df = pd.read_csv(f"{INPUT_DIR}/stored_df.csv")
+    info_buffer = StringIO()
+    df.info(buf=info_buffer)
+    info_str = info_buffer.getvalue()
+    return [
+        html.Div("----------------------------------------------------------------"),
+        html.Div(results),
+        html.Label("データフレームの情報:"),
+        html.Pre(info_str),
+        html.Label("データフレームの要約統計:"),
+        dash_table.DataTable(
+            id="describe-table",
+            columns=[{"name": i, "id": i} for i in df.reset_index().describe().columns],
+            data=df.describe().reset_index().to_dict("records"),
+        ),
+        html.Label("データフレームの最初の10行:"),
+        dash_table.DataTable(
+            id="head-table",
+            columns=[{"name": i, "id": i} for i in df.head(10).columns],
+            data=df.head(10).to_dict("records"),
+        ),
+    ]
+
+
+def created_dataset_layouts(results):
+    return [
+        html.Div("----------------------------------------------------------------"),
+        html.P("Create Dataset"),
+        html.Div(results),
     ]
