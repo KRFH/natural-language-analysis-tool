@@ -10,17 +10,12 @@ from dash.exceptions import PreventUpdate
 from const import API_PATH, INPUT_DIR
 
 from models.langchaintools.preprocessing import chat_tool_with_pandas_df
-from utils import (
+from layouts import (
     generate_categorical_distribution_plot,
     generate_missing_value_plot,
     generate_numerical_distribution_plot,
     generate_correlation_plot,
-    generate_classification_result_layout,
-    generate_regression_result_layout,
-    df_to_csv_data,
-    save_input_data,
 )
-from layouts import file_upload_and_stored, preprocess_and_eda, modeling_evaluaion
 from models.excute import run_mltools
 
 
@@ -39,7 +34,31 @@ app.layout = html.Div(
             html.Div(
                 id="output_layouts",
                 children=[
-                    html.H1("Interactive Dataset Natural Language Query and Analysis Tool"),
+                    dcc.Markdown(
+                        [
+                            """
+                        ## 対話型自然言語分析ツール
+                        注意点：
+                        - エラーが出たらページを更新してください。
+                        - １入力で１処理を心がけて下さい。現状複数処理は未対応です。
+                        - 結果はページ下部に追加されていきます。
+                        #### データのインプット
+                        File Upload」タブからアップロードファイルをアップロードしてください
+                        #### データ分析（Data Science）
+                        ##### データの前処理
+                        - 目的変数（target column）を選択してください
+                        - 欠損値の補完
+                        - カラムの削除
+                        - エンコーディング（One-Hot Encoding, Label Encoding, Target Encoding）
+                        - 必要な場合、「EDA（探索的データ分析）」タブをクリックし、クエリを入力  
+                        ##### データセットの作成  
+                        - 学習用と検証用のデータセットの作成  
+                        ##### モデルの学習と検証
+                        - LightGBMのみ対応                          
+                        """
+                        ],
+                        style={"line-height": "1.0"},
+                    ),
                 ],
             ),
         ),
@@ -187,6 +206,8 @@ def update_uploaded_dataframe(contents, layouts, filename):
                 info_str = info_buffer.getvalue()
 
                 layouts = layouts + [
+                    html.Div("----------------------------------------------------------------"),
+                    html.Div("データをインプットしました"),
                     html.Label("データフレームの情報:"),
                     html.Pre(info_str),
                     html.Label("データフレームの要約統計:"),
