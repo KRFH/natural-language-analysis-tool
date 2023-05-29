@@ -1,7 +1,7 @@
 import pandas as pd
 import lightgbm as lgbm
 from sklearn.model_selection import train_test_split
-from const import INPUT_DIR
+from const import INPUT_DIR, TEST_SIZE, RANDOM_STATE
 
 
 def make_forecast_train_data(query: str):
@@ -16,7 +16,9 @@ def make_forecast_train_data(query: str):
 
     x_train_val = df_train_val.drop([query], axis=1)
     y_train_val = df_train_val[query]
-    x_train, x_valid, y_train, y_valid = train_test_split(x_train_val, y_train_val, test_size=0.2, random_state=3655)
+    x_train, x_valid, y_train, y_valid = train_test_split(
+        x_train_val, y_train_val, test_size=TEST_SIZE, random_state=RANDOM_STATE
+    )
 
     print("set dataset")
     lgb_train = lgbm.Dataset(x_train, y_train, categorical_feature=categorical_features, free_raw_data=False)
