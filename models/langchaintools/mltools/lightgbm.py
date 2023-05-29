@@ -1,5 +1,6 @@
 import pickle
 import pandas as pd
+import numpy as np
 import lightgbm as lgbm
 from const import OUTPUT_DIR, INPUT_DIR
 from langchain.tools import BaseTool
@@ -78,12 +79,20 @@ class LgbminferenceTool(BaseTool):
         print(query)
         query = text_processing(query)
 
-        # x_test = make_forecast_test_data()
-
         file = f"{OUTPUT_DIR}/trained_model.pkl"
         lgbm_model = pickle.load(open(file, "rb"))
 
         df = pd.read_csv(f"{INPUT_DIR}/test.csv")
+
+        categorical_features = []
+        for i in df.columns:
+            if df[i].dtypes == "O":
+                df[i] = df[i].astype("category")
+                categorical_features.append(i)
+
+        # categorical features
+        df[categorical_features] = df[categorical_features].astype("category")
+
         X = df.drop([query], axis=1)
         y = df[query]
 
@@ -93,6 +102,7 @@ class LgbminferenceTool(BaseTool):
             y_pred = lgbm_model.predict(X, num_interation=lgbm_model.best_iteration)
             roc_auc = roc_auc_score(y, y_pred)
             y_pred_binary = [1 if pred > 0.5 else 0 for pred in y_pred]
+            pd.DataFrame(y_pred_binary).to_csv(f"/{OUTPUT_DIR}/inference.csv")
             accuracy = accuracy_score(y, y_pred_binary)
             df_report = pd.DataFrame([roc_auc, accuracy], index=["roc_auc", "accuracy"], columns=["score"])
             df_report.to_csv(f"{OUTPUT_DIR}/report.csv")
@@ -101,6 +111,7 @@ class LgbminferenceTool(BaseTool):
         elif num_class <= 50:
             y_pred = lgbm_model.predict(X, num_interation=lgbm_model.best_iteration)
             y_pred_class = [np.argmax(pred) for pred in y_pred]
+            pd.DataFrame(y_pred_class).to_csv(f"/{OUTPUT_DIR}/inference.csv")
             accuracy = accuracy_score(y, y_pred_class)
             # conf_mat = confusion_matrix(y, y_pred_class)
             df_report = pd.DataFrame([accuracy], index=["accuracy"], columns=["score"])
@@ -109,6 +120,7 @@ class LgbminferenceTool(BaseTool):
         # regression
         else:
             y_pred = lgbm_model.predict(X, num_interation=lgbm_model.best_iteration)
+            pd.DataFrame(y_pred).to_csv(f"/{OUTPUT_DIR}/inference.csv")
             mse = mean_squared_error(y, y_pred)
             r2 = r2_score(y, y_pred)
             df_report = pd.DataFrame([mse, r2], index=["mse", "r2"], columns=["score"])

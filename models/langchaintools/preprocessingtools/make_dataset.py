@@ -1,5 +1,5 @@
 import pandas as pd
-from const import INPUT_DIR
+from const import INPUT_DIR, TEST_SIZE, RANDOM_STATE
 from sklearn.model_selection import train_test_split
 from utils import text_processing
 from langchain.tools import BaseTool
@@ -18,7 +18,7 @@ class MakeDatasetTool(BaseTool):
         y = df[query]
 
         # 学習データと評価データに分割
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=3655)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
 
         X_train[query] = y_train
         X_test[query] = y_test
