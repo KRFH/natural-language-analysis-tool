@@ -8,7 +8,7 @@ from dash import dcc, html, dash_table
 from dash import Input, Output, State
 from dash.exceptions import PreventUpdate
 from const import API_PATH, INPUT_DIR
-
+import openai
 from models.langchaintools.preprocessing import chat_tool_with_pandas_df
 from layouts import (
     generate_categorical_distribution_plot,
@@ -20,8 +20,7 @@ from models.excute import run_mltools
 
 
 # Set the API key environment variable
-with open(API_PATH, mode="r") as f:
-    os.environ["OPENAI_API_KEY"] = f.read()
+openai.api = os.environ["OPENAI_API_KEY"]
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
@@ -110,17 +109,16 @@ app.layout = html.Div(
                                     id="input-container",
                                 ),
                                 html.Div(
-                                    [
+                                    style={"display": "flex", "align-items": "center"},
+                                    children=[
                                         html.H4("Set target column", style={"margin-right": "20px"}),
-                                        dcc.Dropdown(
+                                        dcc.RadioItems(
                                             id="target_column",
-                                            multi=False,
                                             persistence=True,
                                             persistence_type="session",
-                                            style={"width": "300px"},
+                                            inline=True,
                                         ),
                                     ],
-                                    style={"display": "flex"},
                                 ),
                             ],
                         ),

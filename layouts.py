@@ -248,9 +248,9 @@ def learning_result_layouts(results):
 
 def inference_result_layouts(results, num_class, target):
     # 推論結果の読み込み
-    test_pred = pd.read_csv(f"/{OUTPUT_DIR}/inference.csv", index_col=0)
+    test_pred = pd.read_csv(f"{OUTPUT_DIR}/inference.csv", index_col=0)
     test_pred = test_pred.values.reshape(-1)
-    test_target = pd.read_csv(f"/{INPUT_DIR}/test.csv")[target]
+    test_target = pd.read_csv(f"{INPUT_DIR}/test.csv")[target]
     test_target = test_target.values.reshape(-1)
 
     # Create the Plotly layout

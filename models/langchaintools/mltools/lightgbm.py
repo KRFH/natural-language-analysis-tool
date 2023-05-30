@@ -102,7 +102,7 @@ class LgbminferenceTool(BaseTool):
             y_pred = lgbm_model.predict(X, num_interation=lgbm_model.best_iteration)
             roc_auc = roc_auc_score(y, y_pred)
             y_pred_binary = [1 if pred > 0.5 else 0 for pred in y_pred]
-            pd.DataFrame(y_pred_binary).to_csv(f"/{OUTPUT_DIR}/inference.csv")
+            pd.DataFrame(y_pred_binary).to_csv(f"{OUTPUT_DIR}/inference.csv")
             accuracy = accuracy_score(y, y_pred_binary)
             df_report = pd.DataFrame([roc_auc, accuracy], index=["roc_auc", "accuracy"], columns=["score"])
             df_report.to_csv(f"{OUTPUT_DIR}/report.csv")
@@ -111,7 +111,7 @@ class LgbminferenceTool(BaseTool):
         elif num_class <= 50:
             y_pred = lgbm_model.predict(X, num_interation=lgbm_model.best_iteration)
             y_pred_class = [np.argmax(pred) for pred in y_pred]
-            pd.DataFrame(y_pred_class).to_csv(f"/{OUTPUT_DIR}/inference.csv")
+            pd.DataFrame(y_pred_class).to_csv(f"{OUTPUT_DIR}/inference.csv")
             accuracy = accuracy_score(y, y_pred_class)
             # conf_mat = confusion_matrix(y, y_pred_class)
             df_report = pd.DataFrame([accuracy], index=["accuracy"], columns=["score"])
@@ -120,7 +120,7 @@ class LgbminferenceTool(BaseTool):
         # regression
         else:
             y_pred = lgbm_model.predict(X, num_interation=lgbm_model.best_iteration)
-            pd.DataFrame(y_pred).to_csv(f"/{OUTPUT_DIR}/inference.csv")
+            pd.DataFrame(y_pred).to_csv(f"{OUTPUT_DIR}/inference.csv")
             mse = mean_squared_error(y, y_pred)
             r2 = r2_score(y, y_pred)
             df_report = pd.DataFrame([mse, r2], index=["mse", "r2"], columns=["score"])
