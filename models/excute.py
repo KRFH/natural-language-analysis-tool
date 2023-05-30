@@ -6,8 +6,6 @@ from langchain.agents import initialize_agent
 from models.langchaintools import mltools
 from models.langchaintools import preprocessingtools as ppt
 
-import os
-from const import OUTPUT_DIR, INPUT_DIR, API_PATH
 from layouts import (
     preprocessed_result_layouts,
     created_dataset_layouts,
@@ -16,8 +14,6 @@ from layouts import (
 )
 
 
-with open(API_PATH, mode="r") as f:
-    os.environ["OPENAI_API_KEY"] = f.read()
 
 
 def run_mltools(query: str, target: str, num_class: int):
@@ -65,5 +61,3 @@ def run_mltools(query: str, target: str, num_class: int):
     return layouts
 
 
-# if __name__ == "__main__":
-#     run_mltools()
