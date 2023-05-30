@@ -36,9 +36,9 @@ def run_mltools(query: str, num_class: int):
     agent.run(query)
 
     # 推論結果の読み込み
-    test_pred = pd.read_csv(f"/{OUTPUT_DIR}/inference.csv", index_col=0)
+    test_pred = pd.read_csv(f"{OUTPUT_DIR}/inference.csv", index_col=0)
     test_pred = test_pred.values.reshape(-1)
-    test_target = pd.read_csv(f"/{INPUT_DIR}/test_target.csv", index_col=0)
+    test_target = pd.read_csv(f"{INPUT_DIR}/test_target.csv", index_col=0)
     test_target = test_target.values.reshape(-1)
 
     # Calculate metrics
