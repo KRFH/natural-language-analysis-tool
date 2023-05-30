@@ -22,9 +22,6 @@ from sklearn.metrics import (
 
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-with open(API_PATH, mode="r") as f:
-    os.environ["OPENAI_API_KEY"] = f.read()
-
 
 def run_mltools(query: str, num_class: int):
     # Toolの設定
