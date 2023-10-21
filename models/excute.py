@@ -12,8 +12,7 @@ from layouts import (
     learning_result_layouts,
     inference_result_layouts,
 )
-
-
+from flask import session
 
 
 def run_mltools(query: str, target: str, num_class: int):
@@ -32,7 +31,7 @@ def run_mltools(query: str, target: str, num_class: int):
         # PreprocessingTool(),
     ]
     # 通常のLangChainの設定
-    llm = OpenAI(temperature=0)
+    llm = OpenAI(temperature=0, openai_api_key=session["api_key"])
     agent = initialize_agent(tools, llm, agent="zero-shot-react-description", verbose=True)
 
     prompt = """
@@ -59,5 +58,3 @@ def run_mltools(query: str, target: str, num_class: int):
     print(f"results:{results}")
 
     return layouts
-
-
