@@ -4,6 +4,7 @@ import io
 from io import StringIO
 import pandas as pd
 import dash
+from flask import Flask, session
 from dash import dcc, html, dash_table
 from dash import Input, Output, State
 from dash.exceptions import PreventUpdate
@@ -18,17 +19,23 @@ from layouts import (
 )
 from models.excute import run_mltools
 
+# Flaskの設定
+server = Flask(__name__)
+server.secret_key = "super_secret_key"
 
-# Set the API key environment variable
-openai.api = os.environ["OPENAI_API_KEY"]
 
 # Initialize the Dash app
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, server=server)
 
 # Define the layout for the Dash application
 app.layout = html.Div(
-    # Title
     [
+        # init layout
+        html.H1("API Key Configuration"),
+        dcc.Input(id="api-key-input", type="password", placeholder="Enter your API Key"),
+        html.Button("Submit", id="api-key-button"),
+        html.Div(id="api-key-display"),
+        # Title
         dcc.Loading(
             html.Div(
                 id="output_layouts",
@@ -154,6 +161,20 @@ app.layout = html.Div(
         ),
     ]
 )
+
+
+# APIキーの設定
+@app.callback(
+    Output("api-key-display", "children"),
+    [Input("api-key-button", "n_clicks")],
+    [State("api-key-input", "value")],
+)
+def set_api_key(n_clicks, api_key):
+    if n_clicks:
+        # Set the API key in flask session
+        session["api_key"] = api_key
+
+        return "API Key set successfully!"
 
 
 @app.callback(
